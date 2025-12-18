@@ -2,6 +2,8 @@
 
 A WebAssembly-based interactive demonstration of CT image reconstruction using the Kaczmarz algorithm, built with Raylib and Emscripten. This project implements algebraic reconstruction techniques for tomographic data, specifically demonstrating how CT machines reconstruct 2D slices from X-ray projections.
 
+![Screenshot](src/resources/screenshot.png)
+
 **Author:** Stoica-Marcu Floris-Andrei, Ovidius University of Constanta
 
 ## Overview
