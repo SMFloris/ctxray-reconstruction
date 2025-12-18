@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Kaczmarz Reconstruction</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: rgba(30, 30, 35, 1);
+        overflow-y: auto;
+      }
+
+      .page-section {
+        height: 100%;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+        margin-right: 640px;
+        box-sizing: border-box;
+        background: transparent;
+        color: #fff;
+        font-size: 1.5rem;
+        text-align: center;
+      }
+
+      .page-section .content {
+        max-width: 600px;
+        margin: 0 auto;
+        text-align: left;
+      }
+
+       .page-section h1 {
+         font-size: 3rem;
+         margin-bottom: 1rem;
+         font-weight: 300;
+       }
+
+       .page-section h2 {
+         margin-top: 1rem;
+         margin-bottom: 1.5rem;
+       }
+
+       .subtitle {
+         font-size: 1.5rem;
+         font-weight: normal;
+         opacity: 0.8;
+         margin-bottom: 1rem;
+       }
+
+       .content h3 {
+         margin-top: 1rem;
+         margin-bottom: 1rem;
+       }
+
+       a {
+         color: #fff;
+       }
+
+       .bibtex {
+         font-family: monospace;
+         white-space: pre-line;
+       }
+
+        .page-section p {
+          font-size: 1.2rem;
+          line-height: 1.6;
+          opacity: 0.9;
+          margin-bottom: 1rem;
+        }
+
+       figcaption {
+         font-size: 0.9rem;
+         color: #a0a0b0;
+         text-align: center;
+         margin-top: 0.5rem;
+       }
+
+       @media (min-width: 769px) {
+         #buttons button:last-child {
+           display: none;
+         }
+         .page-section button:not(.github-btn) {
+           display: none;
+         }
+       }
+
+      /* ================================
+          MAIN CANVAS AREA
+       ================================ */
+       #main {
+         position: relative;
+       }
+
+       #canvas-wrapper {
+         position: fixed;
+         right: 0;
+         top: 50%;
+         transform: translateY(-50%);
+         width: 640px;
+         height: 480px;
+         overflow: hidden;
+         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+       }
+
+        canvas {
+          position: relative;
+          display: block;
+          background: rgba(30, 30, 35, 1);
+        }
+
+      /* Loader overlay */
+      #loader {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #1a1a2e;
+        gap: 24px;
+        transition: opacity 0.3s ease;
+      }
+
+      #loader.hidden {
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(100, 180, 255, 0.2);
+        border-top-color: #64b4ff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      #status {
+        color: #a0a0b0;
+        font-size: 14px;
+        letter-spacing: 0.5px;
+      }
+
+       /* ================================
+          BUTTONS
+       ================================ */
+        #buttons {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          z-index: 100;
+        }
+
+      button {
+        background: #2a2a3e;
+        border: 1px solid #3a3a4e;
+        color: #d0d0e0;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      button:hover {
+        background: #3a3a4e;
+        border-color: #64b4ff;
+        color: #fff;
+      }
+
+       button svg {
+         width: 16px;
+         height: 16px;
+         fill: currentColor;
+       }
+
+       .github-btn {
+         display: inline-flex;
+         align-items: center;
+         gap: 8px;
+         padding: 8px 12px;
+         font: 14px system-ui, sans-serif;
+         border: 1px solid #3a3a4e;
+         border-radius: 6px;
+         background: #2a2a3e;
+         color: #d0d0e0;
+         cursor: pointer;
+         transition: all 0.2s ease;
+       }
+
+       .github-btn:hover {
+         background: #3a3a4e;
+         border-color: #64b4ff;
+         color: #fff;
+       }
+
+       .github-btn svg {
+         width: 16px;
+         height: 16px;
+         fill: #d0d0e0;
+       }
+
+       .github-btn:hover svg {
+         fill: #fff;
+       }
+
+    @media (max-width: 768px) {
+        #main {
+          display: block;
+          width: 100vw;
+          height: 30vh;
+        }
+        #canvas-wrapper {
+            transform: none;
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 10%;
+        }
+        .page-section {
+          height: 50vh;
+          margin-right: 0;
+          padding-right: 0;
+        }
+        .page-section h1 {
+          font-size: 2rem;
+        }
+        .page-section p {
+          font-size: 1rem;
+        }
+      }
+
+    .spacer-sm {
+        display: block;
+        height: 50px;
+        width: 10px;
+    }
+    .spacer {
+        display: block;
+        height: 50vh;
+        width: 10px;
+    }
+
+
+    </style>
+  </head>
+
+   <body>
+      <section id="section1" class="page-section">
+        <button onclick="window.open('https://github.com/flowstudio/saarpi-project', '_blank')">
+          <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          Source Code
+        </button>
+        <div class="spacer-sm"></div>
+        <h1 id="stage0">Image reconstruction from CT scans</h1>
+         <h2 class="subtitle">by Stoica-Marcu Floris-Andrei<br>Ovidius University of Constanta</h2>
+         <div style="text-align: center; margin: 1rem 0;">
+           <button class="github-btn" onclick="window.open('https://github.com/flowstudio/saarpi-project', '_blank')">
+             <svg viewBox="0 0 16 16" aria-hidden="true">
+               <path d="M8 0C3.58 0 0 3.65 0 8.15c0 3.6 2.29 6.65 5.47 7.73.4.08.55-.18.55-.39 0-.19-.01-.82-.01-1.49-2.01.38-2.53-.5-2.69-.96-.09-.23-.48-.96-.82-1.15-.28-.15-.68-.52-.01-.53.63-.01 1.08.6 1.23.85.72 1.23 1.87.88 2.33.67.07-.54.28-.88.51-1.08-1.78-.21-3.64-.92-3.64-4.1 0-.9.31-1.64.82-2.22-.08-.21-.36-1.05.08-2.18 0 0 .67-.22 2.2.85a7.4 7.4 0 0 1 4 0c1.53-1.07 2.2-.85 2.2-.85.44 1.13.16 1.97.08 2.18.51.58.82 1.32.82 2.22 0 3.19-1.87 3.89-3.65 4.1.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.47.55.39A8.02 8.02 0 0 0 16 8.15C16 3.65 12.42 0 8 0z"/>
+             </svg>
+             Show source
+           </button>
+         </div>
+         <div class="spacer-sm"></div>
+         <div class="content">
+            <p>CT machines work by shooting out thin X-Rays that pass through the material to a detector plate.</p>
+            <p>By shooting many rays in different angle configurations for a single horizontal slice of the material, the CT machine and reconstruction algorithm is able to reconstruct the slice.</p>
+            <p>Combining multiple horizontal slices vertically results in a 3D reconstruction of the scanned material.</p>
+            <p>For demonstration purposes, this application uses brain imaging data from the <a href="https://github.com/OpenNeuroDatasets/ds000102">OpenNeuro Dataset ds000102</a>.</p>
+           <h2>Resolution</h2>
+           <p>The machine is fine-tuned, based on parameters such as number of rays, angles and detector performance, for a certain <b>resolution</b> - i.e. number of <b>voxels</b> able to reconstruct.</p>
+           <p>In our 2D example, this is represented by a cell size of <b>5x5</b>px, downsampled and calculated from an image of <b>256x256</b>px.</p>
+           <h2>X-Ray mechanism - analytic</h2>
+           <p>Each X-ray beam passing through the material is attenuated by the linear attenuation coefficient \( \mu \) along its path.</p>
+           <p>According to <b>Lambert-Beer's law</b>, the intensity at the exit point B, starting from intensity \( I_A \) at point A, is:</p>
+           <p>
+           $$ I_B = I_A \, e^{-\int_A^B \mu(s) \, ds} $$
+           </p>
+           <p>The total attenuation \( \beta \) along the path is:</p>
+           <p>
+           $$ \beta = \int_A^B \mu(s) \, ds = -\ln(I_B / I_A) $$
+           </p>
+           <p>In discrete space, each voxel the ray passes through contributes to the total attenuation, exponentially reducing the beam's intensity.</p>
+        </div>
+      </section>
+      <section id="section2" class="page-section">
+        <div class="spacer-sm"></div>
+        <h1 id="stage1">Preparing our scan</h1>
+        <div class="spacer-sm"></div>
+        <div class="content">
+           <h3>Faking a CT machine</h3>
+           <p>If you assume that a CT machine is expensive ... You would be correct! Thus, we will need to fake its results so that we may reconstruct the fake results!</p>
+           <p>Trust me, this will make a lot more sense later.</p>
+           <p>The plan is to stick any 2D grayscale image into our virtual scanner and see how our reconstruction algorithm performs.</p>
+           <p>I chose a <b>fan-beam</b> circular layout for our virtual CT machine. It was a fun thing to code and it should also look quite familiar to you.</p>
+           <figure>
+             <img src="resources/ct_scanner.jpeg" style="max-width: 100%; height: auto;" />
+             <figcaption>CT scanner that we are trying to fake</figcaption>
+           </figure>
+        </div>
+      </section>
+      <section id="section3" class="page-section">
+        <div class="spacer-sm"></div>
+        <h1 id="stage2">Discretization</h1>
+        <div class="spacer-sm"></div>
+         <div class="content">
+            <h3>How We Compute the Line Integral</h3>
+            <p>To compute the projection value for each ray, we need to calculate the line integral \( \beta = \int_A^B \mu(s) \, ds \), which represents the total attenuation along the ray path.</p>
+            <p>Because the image is divided into a grid of voxels, we calculate the line integral by first determining which voxels it intersects and compute the length of the ray segment within each voxel.</p>
+            <p>The total attenuation for a ray is then:</p>
+            <p>
+            $$ \beta = \sum_{i,j} \mu_{i,j} \cdot l_{i,j} $$
+            </p>
+            <p>where \( l_{i,j} \) is the length of the ray segment inside voxel (i,j).</p>
+            <p>To compute \( l_{i,j} \), we use the Liang-Barsky line clipping algorithm. This function efficiently computes the intersection of a ray with a rectangular voxel, returning the entry and exit points and the segment length.</p>
+            <p>The algorithm works by parameterizing the ray as \( P(t) = (ox, oy) + t \cdot (dx, dy) \), t ≥ 0, and finding the valid t range [t1, t2] where the ray is inside the rectangle. The length is then (t2 - t1) * ||(dx, dy)||.</p>
+            <figure>
+              <img src="resources/lian_barsky.png" style="max-width: 100%; height: auto;" />
+              <figcaption>Liang-Barsky line clipping algorithm illustration</figcaption>
+            </figure>
+         <div class="spacer-sm"></div>
+            <p>By iterating over all voxels that could potentially intersect the ray (determined by bounding box checks), we accumulate the contributions to get the final projection value.</p>
+            <h3>Discretization of the rays</h3>
+            <p>To apply the reconstruction algorithm, we need to discretize the problem. The continuous image is divided into a grid of square voxels, each with an attenuation coefficient μ. In our example, we use a 50x50 grid, representing the resolution of our virtual CT scanner. The black/white values of the pixels represent a lower or higher attenuation.</p>
+             <p>Each ray is discretized into a set of measurements by computing the line integral of the attenuation along the ray path - also known as the projection value \( \beta \) .</p>
+             <p>The Radon transform is a mathematical operation that computes the integrals of a function along all possible lines, forming the basis of tomographic imaging. In CT reconstruction, it transforms the original image into its projection data, which we then invert to recover the image.</p>
+             <p>This discretization transforms the continuous Radon transform into a discrete system of linear equations: A x = b, where A is the system matrix containing the intersection lengths of each ray with each voxel, x is the vector of voxel intensities, and b is the vector of measured projections.</p>
+         </div>
+      </section>
+
+       <section id="section5" class="page-section">
+         <div class="spacer-sm"></div>
+         <h1 id="stage4">Kaczmarz Reconstruction Algorithm</h1>
+         <div class="spacer-sm"></div>
+         <div class="content">
+            <h3>The Kaczmarz Method</h3>
+             <p>The Kaczmarz algorithm is an iterative method for solving overdetermined systems of linear equations. It works by projecting the current estimate onto the hyperplanes defined by each equation in sequence.</p>
+              <p>For each equation i: \( \langle a_i, x \rangle = b_i \), the update is:</p>
+              <p>
+              $$ x^{k+1} = x^k + \frac{b_i - \langle a_i, x^k \rangle}{\|a_i\|^2} a_i $$
+              </p>
+              <p>where \( a_i \) is the i-th row of the system matrix A, \( b_i \) is the i-th measured projection, and \( \|a_i\|^2 \) is the squared Euclidean norm of the row vector \( a_i \).</p>
+             <p>In CT reconstruction, each ray corresponds to an equation \( \langle a_i, x \rangle = b_i \), where \( b_i \) is the measured line integral \( \beta \) and \( a_i \) contains the intersection lengths \( l_{i,j} \) with voxels. The Kaczmarz algorithm cycles through rays, updating \( x \) as \( x^{k+1} = x^k + \frac{b_i - \langle a_i, x^k \rangle}{\|a_i\|^2} a_i \), adjusting voxel intensities to match each ray's measurement.</p>
+             <p>The algorithm converges to a solution that minimizes the least squares error. In practice, we stop after a fixed number of iterations or when the residual falls below a threshold.</p>
+             <p>This method is particularly suitable for large systems and can handle noisy data effectively.</p>
+         </div>
+       </section>
+       <section id="section6" class="page-section">
+         <div class="spacer-sm"></div>
+         <h1 id="stage5">Technical Details</h1>
+         <div class="spacer-sm"></div>
+         <div class="content">
+            <h3>Implementation in C with Raylib</h3>
+            <p>The project is written in C for efficient memory control and performance in computational tasks like image reconstruction. Raylib, a lightweight game development library, handles graphics, windowing, and user input, allowing focus on the core Kaczmarz algorithm.</p>
+            <h3>Web Deployment with WebAssembly</h3>
+            <p>C code is compiled to WebAssembly (WASM) using Emscripten, enabling high-performance browser execution. This provides an interactive demo without downloads, with JS bindings for stage control and resource preloading.</p>
+         </div>
+       </section>
+       <section id="section7" class="page-section">
+         <div class="spacer-sm"></div>
+         <h1 id="stage6">References</h1>
+        <div class="spacer-sm"></div>
+          <div class="content">
+             <p>"Liang-Barsky Algorithm." <em>Wikipedia</em>. Wikimedia Foundation. <a href="https://en.wikipedia.org/wiki/Liang%E2%80%93Barsky_algorithm">https://en.wikipedia.org/wiki/Liang%E2%80%93Barsky_algorithm</a>. Accessed 18 Dec. 2025.</p>
+             <p>"Liang-Barsky Algorithm." <em>GeeksforGeeks</em>. <a href="https://www.geeksforgeeks.org/computer-graphics/liang-barsky-algorithm/">https://www.geeksforgeeks.org/computer-graphics/liang-barsky-algorithm/</a>. Accessed 18 Dec. 2025.</p>
+             <p>"Kaczmarz method." <em>Wikipedia</em>. Wikimedia Foundation. <a href="https://en.wikipedia.org/wiki/Kaczmarz_method">https://en.wikipedia.org/wiki/Kaczmarz_method</a>. Accessed 18 Dec. 2025.</p>
+             <p>Radon, Johann. "On the determination of functions from their integral values along certain manifolds." <em>IEEE Transactions on Medical Imaging</em> 5 (1986): 170-176.</p>
+             <p>Kelly, A.M., Uddin, L.Q., Biswal, B.B., Castellanos, F.X., Milham, M.P. (2008). Competition between functional brain networks mediates behavioral variability. <em>Neuroimage</em>, 39(1):527-37.</p>
+             <p>Mennes, M., Kelly, C., Zuo, X.N., Di Martino, A., Biswal, B.B., Castellanos, F.X., Milham, M.P. (2010). Inter-individual differences in resting-state functional connectivity predict task-induced BOLD activity. <em>Neuroimage</em>, 50(4):1690-701. doi: 10.1016/j.neuroimage.2010.01.002. Epub 2010 Jan 15. Erratum in: Neuroimage. 2011 Mar 1;55(1):434.</p>
+             <p>Mennes, M., Zuo, X.N., Kelly, C., Di Martino, A., Zang, Y.F., Biswal, B., Castellanos, F.X., Milham, M.P. (2011). Linking inter-individual differences in neural activation and behavior to intrinsic brain dynamics. <em>Neuroimage</em>, 54(4):2950-9. doi: 10.1016/j.neuroimage.2010.10.046.</p>
+             <p>OpenNeuro Dataset ds000102. <a href="https://github.com/OpenNeuroDatasets/ds000102">https://github.com/OpenNeuroDatasets/ds000102</a>. Accessed 18 Dec. 2025.</p>
+          </div>
+      </section>
+     <!-- RIGHT SIDE CANVAS AREA -->
+    <div id="main">
+      <div id="canvas-wrapper">
+        <canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1"></canvas>
+
+        <div id="loader">
+          <div class="spinner"></div>
+          <div id="status">Loading...</div>
+       </div>
+     </div>
+    </div>
+
+     <!-- Floating Buttons -->
+     <div id="buttons">
+        <button onclick="nextPage()">
+          Next page
+        </button>
+     </div>
+
+    <script>
+      var loaderElement = document.getElementById('loader');
+      var statusElement = document.getElementById('status');
+
+      var Module = {
+        stage: 0,
+         noStages: 7,
+        totalDependencies: 0,
+
+        print: text => console.log(text),
+        printErr: text => console.error(text),
+        canvas: document.getElementById('canvas'),
+
+        setStatus(text) {
+          if (!text) return loaderElement.classList.add('hidden');
+          statusElement.textContent = text;
+        },
+
+        monitorRunDependencies(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          if (left) {
+            Module.setStatus(
+              'Loading... (' +
+              (this.totalDependencies - left) + '/' +
+              this.totalDependencies + ')'
+            );
+          } else {
+            Module.setStatus('');
+          }
+        },
+
+        onRuntimeInitialized() {
+          Module.setStageFun = Module.cwrap('setStage', null, ['number']);
+          // Set up Intersection Observer after module is fully initialized
+          const isMobile = window.innerWidth <= 768;
+           const observerOptions = {
+             root: null,
+             rootMargin: isMobile ? '0px 0px -50% 0px' : '0px',
+             threshold: isMobile ? 0 : 0.5
+           };
+
+           const observerCallback = (entries) => {
+             entries.forEach(entry => {
+               if (entry.isIntersecting) {
+                 const sectionId = entry.target.id;
+                 sectionIndex = stageIds.indexOf(sectionId);
+                 const intersectionsCalled = entry.target.textContent;
+                 console.log(intersectionsCalled);
+                   if (sectionIndex !== lastStage && sectionIndex >= 0 && sectionIndex < stageIds.length) {
+                   Module.setStage(sectionIndex);
+                   lastStage = sectionIndex;
+                 }
+               }
+             });
+           };
+
+           const observer = new IntersectionObserver(observerCallback, observerOptions);
+           stageIds.forEach(stageId => {
+             const h1 = document.getElementById(stageId);
+             if (h1) observer.observe(h1);
+           });
+        },
+         setStage(stage) {
+            this.stage = stage % this.noStages;
+            if (this.setStageFun) {
+              this.setStageFun(this.stage);
+            }
+         },
+        nextStage() {
+           this.stage += 1;
+           this.setStage(this.stage);
+         }
+       };
+
+        let currentPage = 0;
+          const stageIds = ['stage0', 'stage1', 'stage2', 'stage4', 'stage5', 'stage6', 'stage7'];
+
+        function nextPage() {
+           currentPage = (currentPage + 1) % stageIds.length;
+          scrollToSection(currentPage);
+          Module.nextStage();
+          updateButton();
+        }
+
+       function scrollToSection(index) {
+         const section = document.getElementById(stageIds[index]);
+         section.scrollIntoView({ behavior: 'smooth' });
+       }
+
+       function updateButton() {
+         const button = document.querySelector('#buttons button:last-child');
+         if (window.innerWidth <= 768) {
+           button.style.display = 'none';
+         } else {
+           button.style.display = 'none';
+         }
+       }
+
+       updateButton();
+
+        let lastStage = -1;
+
+      Module.setStatus('Loading...');
+      window.onerror = () => Module.setStatus('Error loading application');
+
+
+    </script>
+
+    {{{ SCRIPT }}}
+  </body>
+</html>
